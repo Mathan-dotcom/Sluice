@@ -113,8 +113,15 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [fetchStats]);
 
+  const [mousePos, setMousePos] = useState({ x: "50%", y: "50%" });
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: `${e.clientX}px`, y: `${e.clientY}px` });
+  };
+
   return (
     <main
+      onMouseMove={handleMouseMove}
       style={{
         position: "relative",
         minHeight: "100vh",
@@ -124,6 +131,17 @@ export default function Home() {
     >
       {/* Hydrodynamic Sluice Stream Flow Wallpaper */}
       <SluiceFlow />
+
+      {/* Interactive Ambient Radial Spotlight */}
+      <div
+        className="ambient-spotlight"
+        style={
+          {
+            "--mouse-x": mousePos.x,
+            "--mouse-y": mousePos.y,
+          } as React.CSSProperties
+        }
+      />
 
       {/* Main Container */}
       <div
