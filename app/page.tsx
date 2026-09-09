@@ -11,8 +11,11 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
+  Wallet,
+  Home as HomeIcon,
 } from "lucide-react";
 import SluiceFlow from "@/components/SluiceFlow";
+import LandingView from "@/components/LandingView";
 import SellerDashboard from "@/components/SellerDashboard";
 import ApiPlayground from "@/components/ApiPlayground";
 import AuditTrail from "@/components/AuditTrail";
@@ -23,6 +26,7 @@ import {
   DEFAULT_USAGE_VAULT_ADDRESS,
   UsageReceipt,
 } from "@/lib/arc";
+import { connectBrowserWallet } from "@/lib/wallet";
 
 export default function Home() {
   const [stats, setStats] = useState<{
@@ -36,12 +40,12 @@ export default function Home() {
     vaultAddress: string;
     receipts: UsageReceipt[];
   }>({
-    balance: "0.1500",
+    balance: "0.00",
     currency: "USDC",
-    withdrawThreshold: "0.20",
+    withdrawThreshold: "0.50",
     canWithdraw: false,
-    totalCalls: 3,
-    totalVolume: "0.1500",
+    totalCalls: 0,
+    totalVolume: "0.00",
     sellerAddress: DEFAULT_SELLER_ADDRESS,
     vaultAddress: DEFAULT_USAGE_VAULT_ADDRESS,
     receipts: [],
@@ -49,7 +53,22 @@ export default function Home() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isArchModalOpen, setIsArchModalOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"control" | "playground" | "audit">("control");
+  
+  // Navigation view: "landing" (default) or "sandbox"
+  const [currentView, setCurrentView] = useState<"landing" | "sandbox">("landing");
+  
+  // Sandbox sub-view: "control" | "playground" | "audit"
+  const [sandboxTab, setSandboxTab] = useState<"control" | "playground" | "audit">("control");
+
+  // Global wallet connection state
+  const [wallet, setWallet] = useState<{
+    address: string | null;
+    balance: string | null;
+  }>({
+    address: null,
+    balance: null,
+  });
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setIsLoading(true);
@@ -76,9 +95,21 @@ export default function Home() {
     }
   }, []);
 
+  const handleGlobalWalletConnect = async () => {
+    setIsConnectingWallet(true);
+    try {
+      const res = await connectBrowserWallet();
+      setWallet({ address: res.address, balance: res.balance });
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Wallet connection failed.");
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
-    // Periodically sync stats every 12 seconds
     const interval = setInterval(fetchStats, 12000);
     return () => clearInterval(interval);
   }, [fetchStats]);
@@ -120,7 +151,15 @@ export default function Home() {
         >
           {/* Logo & Network Status */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div
+              onClick={() => setCurrentView("landing")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                cursor: "pointer",
+              }}
+            >
               <span className="beacon-dot" />
               <span
                 style={{
@@ -145,191 +184,219 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Action Navigation */}
+          {/* Primary View Switcher Navigation */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <button
+              onClick={() => setCurrentView("landing")}
+              className={currentView === "landing" ? "neu-button-primary" : "neu-button"}
+              style={{ padding: "0.5rem 1rem", fontSize: "0.82rem" }}
+            >
+              <HomeIcon size={14} />
+              <span>Overview</span>
+            </button>
+
+            <button
+              id="nav-btn-sandbox"
+              onClick={() => setCurrentView("sandbox")}
+              className={currentView === "sandbox" ? "neu-button-primary" : "neu-button"}
+              style={{ padding: "0.5rem 1rem", fontSize: "0.82rem" }}
+            >
+              <Cpu size={14} />
+              <span>Sandbox & Mission Control</span>
+            </button>
+          </div>
+
+          {/* Action Navigation & Wallet Button */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <button
               id="btn-architecture"
               onClick={() => setIsArchModalOpen(true)}
               className="neu-button"
-              style={{ padding: "0.55rem 1.1rem", fontSize: "0.8rem" }}
+              style={{ padding: "0.55rem 1rem", fontSize: "0.8rem" }}
             >
               <BookOpen size={14} />
-              <span>Architecture & Track Docs</span>
+              <span>Specs</span>
             </button>
 
-            <a
-              id="link-faucet"
-              href="https://faucet.circle.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="neu-button"
-              style={{ padding: "0.55rem 1.1rem", fontSize: "0.8rem" }}
-            >
-              <span>Circle USDC Faucet</span>
-              <ExternalLink size={13} />
-            </a>
-
-            <div
-              className="neu-pill"
-              style={{
-                padding: "0.5rem 1rem",
-                background: "var(--neu-base-raised)",
-              }}
-            >
-              <span style={{ color: "var(--zinc-muted)" }}>Vault:</span>
-              <span style={{ color: "#ffffff", fontWeight: 500 }}>
-                {stats.vaultAddress.slice(0, 6)}...{stats.vaultAddress.slice(-4)}
-              </span>
-            </div>
+            {wallet.address ? (
+              <div
+                className="neu-pill"
+                style={{
+                  padding: "0.5rem 0.85rem",
+                  background: "var(--neu-base-raised)",
+                }}
+              >
+                <Wallet size={12} color="#ffffff" />
+                <span style={{ color: "#ffffff", fontWeight: 600 }}>
+                  {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
+                </span>
+                {wallet.balance && (
+                  <span style={{ color: "var(--zinc-muted)" }}>
+                    {wallet.balance} USDC
+                  </span>
+                )}
+              </div>
+            ) : (
+              <button
+                id="btn-connect-topbar"
+                onClick={handleGlobalWalletConnect}
+                disabled={isConnectingWallet}
+                className="neu-button-primary"
+                style={{ padding: "0.55rem 1rem", fontSize: "0.8rem" }}
+              >
+                <Wallet size={14} />
+                <span>{isConnectingWallet ? "Connecting..." : "Connect Wallet"}</span>
+              </button>
+            )}
           </div>
         </header>
 
-        {/* Hero Section */}
-        <section style={{ marginBottom: "2.5rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              marginBottom: "0.75rem",
-            }}
-          >
-            <div className="neu-pill">
-              <Zap size={13} color="#ffffff" />
-              <span>SUB-SECOND x402 SETTLEMENT ON ARC</span>
-            </div>
-            <span className="text-micro" style={{ color: "var(--zinc-muted)" }}>
-              ETHOnline 2026 Submission
-            </span>
-          </div>
+        {/* --- VIEW 1: LANDING PAGE --- */}
+        {currentView === "landing" && (
+          <LandingView
+            onEnterSandbox={() => setCurrentView("sandbox")}
+            onOpenArchitecture={() => setIsArchModalOpen(true)}
+            totalCalls={stats.totalCalls}
+            totalVolume={stats.totalVolume}
+          />
+        )}
 
-          <h1
-            className="text-display-md"
-            style={{
-              color: "#ffffff",
-              marginBottom: "1rem",
-              maxWidth: "960px",
-            }}
-          >
-            Pay-Per-Call API Monetization with On-Chain Usage Vault
-          </h1>
-
-          <p
-            className="text-body card-description"
-            style={{
-              maxWidth: "820px",
-              color: "#a1a1aa",
-              fontSize: "1.05rem",
-              lineHeight: 1.6,
-            }}
-          >
-            Sluice allows autonomous AI agents and programmatic clients to consume APIs with instant machine payments in USDC on Arc. Unpaid callers receive an HTTP 402 challenge; once settled, requests unlock instantly and usage is recorded irrevocably on the <strong>UsageVault</strong> smart contract.
-          </p>
-        </section>
-
-        {/* View Switcher Tabs */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.75rem",
-            marginBottom: "1.75rem",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
-            paddingBottom: "1rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <button
-            id="tab-control"
-            onClick={() => setActiveView("control")}
-            className={activeView === "control" ? "neu-button-primary" : "neu-button"}
-            style={{ padding: "0.6rem 1.25rem" }}
-          >
-            <Layers size={16} />
-            <span>Seller Mission Control</span>
-          </button>
-
-          <button
-            id="tab-playground"
-            onClick={() => setActiveView("playground")}
-            className={activeView === "playground" ? "neu-button-primary" : "neu-button"}
-            style={{ padding: "0.6rem 1.25rem" }}
-          >
-            <Cpu size={16} />
-            <span>Interactive 402 Playground</span>
-          </button>
-
-          <button
-            id="tab-audit"
-            onClick={() => setActiveView("audit")}
-            className={activeView === "audit" ? "neu-button-primary" : "neu-button"}
-            style={{ padding: "0.6rem 1.25rem" }}
-          >
-            <Terminal size={16} />
-            <span>On-Chain Ledger ({stats.receipts.length})</span>
-          </button>
-        </div>
-
-        {/* Content Sections */}
-        {activeView === "control" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
-            <SellerDashboard
-              balance={stats.balance}
-              currency={stats.currency}
-              withdrawThreshold={stats.withdrawThreshold}
-              canWithdraw={stats.canWithdraw}
-              totalCalls={stats.totalCalls}
-              totalVolume={stats.totalVolume}
-              sellerAddress={stats.sellerAddress}
-              vaultAddress={stats.vaultAddress}
-              onRefresh={fetchStats}
-            />
-
-            {/* Also include quick playground teaser below */}
-            <div style={{ marginTop: "1rem" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "1rem",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span className="text-micro" style={{ color: "#ffffff" }}>
-                    LIVE TEST GATEWAY
+        {/* --- VIEW 2: SANDBOX & MISSION CONTROL --- */}
+        {currentView === "sandbox" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+            {/* Breadcrumb / Section Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                  <span
+                    onClick={() => setCurrentView("landing")}
+                    style={{
+                      color: "var(--zinc-muted)",
+                      cursor: "pointer",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Sluice
                   </span>
-                  <ChevronRight size={14} color="var(--zinc-muted)" />
+                  <ChevronRight size={12} color="var(--zinc-muted)" />
+                  <span className="text-micro" style={{ color: "#ffffff" }}>
+                    SANDBOX & MISSION CONTROL
+                  </span>
                 </div>
+                <h1 className="text-display-md" style={{ color: "#ffffff" }}>
+                  Autonomous Financial Mission Control
+                </h1>
               </div>
-              <ApiPlayground onPaymentSettled={fetchStats} />
+
+              {/* View Switcher Tabs */}
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => setSandboxTab("control")}
+                  className={sandboxTab === "control" ? "neu-button-primary" : "neu-button"}
+                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.8rem" }}
+                >
+                  <Layers size={14} />
+                  <span>Treasury Vault</span>
+                </button>
+
+                <button
+                  onClick={() => setSandboxTab("playground")}
+                  className={sandboxTab === "playground" ? "neu-button-primary" : "neu-button"}
+                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.8rem" }}
+                >
+                  <Cpu size={14} />
+                  <span>402 Sandbox</span>
+                </button>
+
+                <button
+                  onClick={() => setSandboxTab("audit")}
+                  className={sandboxTab === "audit" ? "neu-button-primary" : "neu-button"}
+                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.8rem" }}
+                >
+                  <Terminal size={14} />
+                  <span>Ledger ({stats.receipts.length})</span>
+                </button>
+              </div>
             </div>
 
-            <AuditTrail
-              receipts={stats.receipts}
-              onRefresh={fetchStats}
-              isLoading={isLoading}
-            />
-          </div>
-        )}
+            {/* Sandbox Tab Content */}
+            {sandboxTab === "control" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+                <SellerDashboard
+                  balance={stats.balance}
+                  currency={stats.currency}
+                  withdrawThreshold={stats.withdrawThreshold}
+                  canWithdraw={stats.canWithdraw}
+                  totalCalls={stats.totalCalls}
+                  totalVolume={stats.totalVolume}
+                  sellerAddress={stats.sellerAddress}
+                  vaultAddress={stats.vaultAddress}
+                  onRefresh={fetchStats}
+                />
 
-        {activeView === "playground" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-            <ApiPlayground onPaymentSettled={fetchStats} />
-            <AuditTrail
-              receipts={stats.receipts}
-              onRefresh={fetchStats}
-              isLoading={isLoading}
-            />
-          </div>
-        )}
+                <div style={{ marginTop: "1rem" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span className="text-micro" style={{ color: "#ffffff" }}>
+                        INTERACTIVE ENDPOINT SANDBOX
+                      </span>
+                      <ChevronRight size={14} color="var(--zinc-muted)" />
+                    </div>
+                  </div>
+                  <ApiPlayground
+                    onPaymentSettled={fetchStats}
+                    connectedWalletAddress={wallet.address}
+                    onWalletConnect={(addr, bal) => setWallet({ address: addr, balance: bal })}
+                  />
+                </div>
 
-        {activeView === "audit" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-            <AuditTrail
-              receipts={stats.receipts}
-              onRefresh={fetchStats}
-              isLoading={isLoading}
-            />
+                <AuditTrail
+                  receipts={stats.receipts}
+                  onRefresh={fetchStats}
+                  isLoading={isLoading}
+                />
+              </div>
+            )}
+
+            {sandboxTab === "playground" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                <ApiPlayground
+                  onPaymentSettled={fetchStats}
+                  connectedWalletAddress={wallet.address}
+                  onWalletConnect={(addr, bal) => setWallet({ address: addr, balance: bal })}
+                />
+                <AuditTrail
+                  receipts={stats.receipts}
+                  onRefresh={fetchStats}
+                  isLoading={isLoading}
+                />
+              </div>
+            )}
+
+            {sandboxTab === "audit" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                <AuditTrail
+                  receipts={stats.receipts}
+                  onRefresh={fetchStats}
+                  isLoading={isLoading}
+                />
+              </div>
+            )}
           </div>
         )}
 
