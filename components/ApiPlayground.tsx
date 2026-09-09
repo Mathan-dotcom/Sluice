@@ -11,16 +11,27 @@ import {
   Coins,
   FileCode2,
   ExternalLink,
+  Wallet,
+  Check,
+  AlertCircle,
 } from "lucide-react";
-import { ARC_TESTNET_CONFIG } from "@/lib/arc";
+import { ethers } from "ethers";
+import { ARC_TESTNET_CONFIG, USAGE_VAULT_ABI } from "@/lib/arc";
+import { connectBrowserWallet } from "@/lib/wallet";
 
 interface ApiPlaygroundProps {
   onPaymentSettled: () => void;
+  connectedWalletAddress?: string | null;
+  onWalletConnect?: (address: string, balance: string) => void;
 }
 
 const SAMPLE_TEXT = `Autonomous AI agents require machine-speed economic rails to purchase inference, compute, and specialized data feeds without human credit cards or monthly subscription agreements. Sluice bridges autonomous LLM workers and API publishers through native USDC settlement on the Arc Layer 1 network. By issuing standard HTTP 402 Payment Required challenges and settling directly into a multi-tenant UsageVault smart contract, every API call becomes provable, auditable, and self-clearing within sub-second finality.`;
 
-export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) {
+export default function ApiPlayground({
+  onPaymentSettled,
+  connectedWalletAddress,
+  onWalletConnect,
+}: ApiPlaygroundProps) {
   const [inputText, setInputText] = useState(SAMPLE_TEXT);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +40,34 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"result" | "headers" | "curl">("result");
+
+  // Local wallet state
+  const [wallet, setWallet] = useState<{
+    address: string | null;
+    balance: string | null;
+  }>({
+    address: connectedWalletAddress || null,
+    balance: null,
+  });
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+
+  const handleConnectWallet = async () => {
+    setIsConnectingWallet(true);
+    setWalletError(null);
+    try {
+      const res = await connectBrowserWallet();
+      setWallet({ address: res.address, balance: res.balance });
+      if (onWalletConnect) {
+        onWalletConnect(res.address, res.balance);
+      }
+    } catch (err: any) {
+      console.error("Wallet connection error:", err);
+      setWalletError(err.message || "Failed to connect wallet.");
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
 
   // Step 1: Call API without payment proof (Triggers 402)
   const handleCallUnpaid = async () => {
@@ -59,32 +98,80 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
     }
   };
 
-  // Step 2: Settle payment on Arc Testnet
+  // Step 2: Settle payment on Arc Testnet (either via MetaMask if connected, or via server relayer)
   const handleSettlePayment = async () => {
     setIsLoading(true);
+
     try {
-      const res = await fetch("/api/gate/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: "0.05",
-          endpoint: "POST /api/gate/summarize",
-        }),
-      });
+      let txHash = "";
 
-      const data = await res.json();
-      if (res.ok && data.proofToken) {
-        setPaymentProof(data.proofToken);
-        setActiveStep(3);
+      // If user has browser wallet connected, execute real transaction from their MetaMask!
+      if (wallet.address && typeof window !== "undefined" && window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          const targetVault =
+            challengeData?.destination?.usageVault ||
+            process.env.NEXT_PUBLIC_USAGE_VAULT_ADDRESS;
+          const targetSeller =
+            challengeData?.destination?.seller ||
+            process.env.NEXT_PUBLIC_SELLER_ADDRESS;
 
-        // Notify parent to refresh seller balance and audit trail
-        onPaymentSettled();
+          const vaultContract = new ethers.Contract(
+            targetVault,
+            USAGE_VAULT_ABI,
+            signer
+          );
 
-        // Step 3: Automatically execute unlocked request with payment proof
-        await handleCallPaid(data.proofToken);
+          const valueWei = ethers.parseEther("0.05");
+          console.log("[MetaMask Settle] Calling recordPayment on Arc Testnet...");
+          const tx = await vaultContract.recordPayment(
+            targetSeller,
+            wallet.address,
+            valueWei,
+            "summarize/v1",
+            { value: valueWei }
+          );
+
+          const receipt = await tx.wait(1);
+          txHash = receipt.hash;
+        } catch (metamaskErr: any) {
+          console.warn(
+            "MetaMask signing cancelled or failed, falling back to server relayer:",
+            metamaskErr
+          );
+        }
       }
-    } catch (err) {
+
+      // If not settled via MetaMask, settle via server relayer on Arc Testnet
+      if (!txHash) {
+        const res = await fetch("/api/gate/pay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: "0.05",
+            endpoint: "POST /api/gate/summarize",
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.proofToken) {
+          throw new Error(data.error || "Payment settlement failed.");
+        }
+        txHash = data.proofToken;
+      }
+
+      setPaymentProof(txHash);
+      setActiveStep(3);
+
+      // Refresh seller dashboard and ledger
+      onPaymentSettled();
+
+      // Step 3: Automatically execute unlocked request with payment proof
+      await handleCallPaid(txHash);
+    } catch (err: any) {
       console.error(err);
+      alert("Payment settlement failed: " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +186,7 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
         headers: {
           "Content-Type": "application/json",
           "X-402-Payment-Proof": proof,
-          "X-Payer-Address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "X-Payer-Address": wallet.address || "0xCaller",
         },
         body: JSON.stringify({ text: inputText }),
       });
@@ -129,7 +216,7 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
         position: "relative",
       }}
     >
-      {/* Title & Flow Badges */}
+      {/* Title & Wallet Strip */}
       <div
         style={{
           display: "flex",
@@ -138,13 +225,15 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
           flexWrap: "wrap",
           gap: "1rem",
           marginBottom: "1.5rem",
+          paddingBottom: "1.25rem",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
         }}
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
             <div className="neu-pill">
               <Cpu size={12} color="#ffffff" />
-              <span>GATED ENDPOINT PLAYGROUND</span>
+              <span>GATED ENDPOINT SANDBOX</span>
             </div>
             <span className="text-micro" style={{ color: "var(--zinc-muted)" }}>
               POST /api/gate/summarize
@@ -155,37 +244,115 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
           </h2>
         </div>
 
-        {/* Step Indicator Pills */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <div
-            className="neu-pill"
-            style={{
-              color: activeStep >= 1 ? "#ffffff" : "var(--zinc-muted)",
-              boxShadow: activeStep === 1 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
-            }}
-          >
-            <span>1. Call (Unpaid)</span>
-          </div>
-          <ArrowRight size={12} color="var(--zinc-muted)" />
-          <div
-            className="neu-pill"
-            style={{
-              color: activeStep >= 2 ? "#ffffff" : "var(--zinc-muted)",
-              boxShadow: activeStep === 2 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
-            }}
-          >
-            <span>2. 402 Settlement</span>
-          </div>
-          <ArrowRight size={12} color="var(--zinc-muted)" />
-          <div
-            className="neu-pill"
-            style={{
-              color: activeStep === 3 ? "#ffffff" : "var(--zinc-muted)",
-              boxShadow: activeStep === 3 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
-            }}
-          >
-            <span>3. AI Unlock</span>
-          </div>
+        {/* Sandbox Wallet Connect Button */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {wallet.address ? (
+            <div
+              className="neu-pill"
+              style={{
+                padding: "0.5rem 1rem",
+                background: "var(--neu-base-raised)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <span className="beacon-dot" style={{ width: "6px", height: "6px" }} />
+              <span style={{ color: "#ffffff", fontWeight: 600 }}>
+                {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
+              </span>
+              {wallet.balance && (
+                <span style={{ color: "var(--zinc-muted)", marginLeft: "0.25rem" }}>
+                  ({wallet.balance} USDC)
+                </span>
+              )}
+              <button
+                onClick={() => setWallet({ address: null, balance: null })}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--zinc-muted)",
+                  cursor: "pointer",
+                  fontSize: "0.7rem",
+                  marginLeft: "0.4rem",
+                }}
+                title="Disconnect wallet"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              id="btn-connect-sandbox-wallet"
+              onClick={handleConnectWallet}
+              disabled={isConnectingWallet}
+              className="neu-button-primary"
+              style={{ padding: "0.55rem 1.1rem", fontSize: "0.82rem" }}
+            >
+              <Wallet size={15} />
+              <span>{isConnectingWallet ? "Connecting..." : "Connect Web3 Wallet"}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {walletError && (
+        <div
+          style={{
+            marginBottom: "1rem",
+            padding: "0.6rem 0.9rem",
+            borderRadius: "var(--radius-pulse-sm)",
+            background: "rgba(161, 161, 170, 0.12)",
+            color: "#e4e4e7",
+            fontSize: "0.8rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <AlertCircle size={14} />
+          <span>{walletError}</span>
+        </div>
+      )}
+
+      {/* Step Indicator Pills */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          marginBottom: "1.5rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          className="neu-pill"
+          style={{
+            color: activeStep >= 1 ? "#ffffff" : "var(--zinc-muted)",
+            boxShadow: activeStep === 1 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
+          }}
+        >
+          <span>1. Call (Unpaid)</span>
+        </div>
+        <ArrowRight size={12} color="var(--zinc-muted)" />
+        <div
+          className="neu-pill"
+          style={{
+            color: activeStep >= 2 ? "#ffffff" : "var(--zinc-muted)",
+            boxShadow: activeStep === 2 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
+          }}
+        >
+          <span>2. 402 Settlement</span>
+        </div>
+        <ArrowRight size={12} color="var(--zinc-muted)" />
+        <div
+          className="neu-pill"
+          style={{
+            color: activeStep >= 3 ? "#ffffff" : "var(--zinc-muted)",
+            boxShadow: activeStep === 3 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
+          }}
+        >
+          <span>3. AI Unlock</span>
         </div>
       </div>
 
@@ -260,7 +427,11 @@ export default function ApiPlayground({ onPaymentSettled }: ApiPlaygroundProps) 
             style={{ padding: "0.75rem 1.5rem" }}
           >
             <Coins size={16} />
-            <span>Settle 0.05 USDC on Arc & Unlock</span>
+            <span>
+              {wallet.address
+                ? `Pay 0.05 USDC with MetaMask (${wallet.address.slice(0, 6)}...)`
+                : "Settle 0.05 USDC on Arc & Unlock"}
+            </span>
           </button>
         )}
 
