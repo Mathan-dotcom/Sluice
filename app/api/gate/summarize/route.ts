@@ -5,7 +5,7 @@ import {
   DEFAULT_SELLER_ADDRESS,
   DEFAULT_USAGE_VAULT_ADDRESS,
   addReceipt,
-  generateTxHash,
+  verifyTransactionOnArc,
 } from "@/lib/arc";
 
 export async function POST(req: NextRequest) {
@@ -20,15 +20,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const priceUsdc = "0.05";
+    const seller =
+      process.env.NEXT_PUBLIC_SELLER_ADDRESS || DEFAULT_SELLER_ADDRESS;
+    const vault =
+      process.env.NEXT_PUBLIC_USAGE_VAULT_ADDRESS ||
+      DEFAULT_USAGE_VAULT_ADDRESS;
+
     // Check for x402 payment proof in headers
     const paymentProof =
       req.headers.get("x-402-payment-proof") ||
       req.headers.get("x-payment-tx") ||
       req.headers.get("authorization")?.replace(/^Bearer\s+|^x402\s+/i, "");
-
-    const priceUsdc = "0.05";
-    const seller = process.env.SELLER_ADDRESS || DEFAULT_SELLER_ADDRESS;
-    const vault = process.env.USAGE_VAULT_ADDRESS || DEFAULT_USAGE_VAULT_ADDRESS;
 
     // --- 402 PAYMENT REQUIRED GATE ---
     if (!paymentProof) {
@@ -54,7 +57,8 @@ export async function POST(req: NextRequest) {
           settlement: {
             method: "UsageVault.recordPayment(seller, payer, amount, 'summarize/v1')",
             settleEndpoint: "/api/gate/pay",
-            headerRequired: "X-402-Payment-Proof: <txHash_or_settlement_signature>",
+            headerRequired:
+              "X-402-Payment-Proof: <Arc_Transaction_Hash>",
           },
           challenge: {
             nonce: "slc_" + Math.random().toString(36).substring(2, 12),
@@ -74,25 +78,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- PAYMENT VERIFIED: EXECUTE GATED AI WORKLOAD ---
-    const payerHeader = req.headers.get("x-payer-address") || "0xAgent..." + paymentProof.slice(2, 8);
-    const txHash = paymentProof.startsWith("0x") && paymentProof.length === 66
-      ? paymentProof
-      : generateTxHash();
+    // --- REAL ON-CHAIN TRANSACTION VERIFICATION ---
+    const verification = await verifyTransactionOnArc(paymentProof);
+    if (!verification.valid) {
+      return NextResponse.json(
+        {
+          error: "Invalid or Unconfirmed Payment Proof",
+          details: verification.error,
+          requiredVault: vault,
+          txSubmitted: paymentProof,
+        },
+        { status: 402 }
+      );
+    }
 
-    // Run the actual AI text analysis engine
+    // --- REAL AI INFERENCE VIA GOOGLE GEMINI 3.6 FLASH ---
     const aiResult = await processSummarization({ text, mode });
 
-    // Record verified receipt to on-chain vault audit log
+    // Record verified receipt
     const receipt = {
-      id: "rcpt-" + Date.now().toString(36),
-      txHash,
+      id: "arc-" + paymentProof,
+      txHash: paymentProof,
       seller,
-      payer: payerHeader,
+      payer: verification.from || "0xVerifiedCaller",
       amount: priceUsdc,
       token: "USDC",
       timestamp: Date.now(),
-      blockNumber: Math.floor(1248900 + Math.random() * 500),
+      blockNumber: verification.blockNumber || 0,
       endpoint: "POST /api/gate/summarize",
       status: "CONFIRMED" as const,
     };
@@ -128,7 +140,10 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Gateway error:", error);
     return NextResponse.json(
-      { error: "Internal Gateway Error", details: error?.message || String(error) },
+      {
+        error: "Internal Gateway Error",
+        details: error?.message || String(error),
+      },
       { status: 500 }
     );
   }

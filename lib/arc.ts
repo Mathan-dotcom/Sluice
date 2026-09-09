@@ -15,14 +15,13 @@ export const ARC_TESTNET_CONFIG = {
   blockExplorerUrls: ["https://testnet.arcscan.app"],
 };
 
-// Default deployed demo address if not set in env
 export const DEFAULT_USAGE_VAULT_ADDRESS =
   process.env.NEXT_PUBLIC_USAGE_VAULT_ADDRESS ||
-  "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318";
+  "0x2fB757b6158320b239a6eC4f7d7A0149D858D890";
 
 export const DEFAULT_SELLER_ADDRESS =
   process.env.NEXT_PUBLIC_SELLER_ADDRESS ||
-  "0x429994c9efE1D137c4856E3d5dF981fae62F764F";
+  "0xa9c97E3D0f95be9Fc990B3686997eC346D96833e";
 
 export const USAGE_VAULT_ABI = [
   "function recordPayment(address seller, address payer, uint256 amount, string callTag) external payable",
@@ -42,7 +41,7 @@ export interface UsageReceipt {
   txHash: string;
   seller: string;
   payer: string;
-  amount: string; // e.g. "0.05"
+  amount: string; // in USDC
   token: string;  // "USDC"
   timestamp: number;
   blockNumber: number;
@@ -50,62 +49,120 @@ export interface UsageReceipt {
   status: "CONFIRMED" | "SETTLING" | "FAILED";
 }
 
-// In-memory receipt cache for real-time dashboard updates across sessions
-let receiptsStore: UsageReceipt[] = [
-  {
-    id: "rcpt-001",
-    txHash: "0x3f8a92bb710ef50d89265f61765c71a3e5cbb5920d0f507b5380d6b63c224f8d",
-    seller: DEFAULT_SELLER_ADDRESS,
-    payer: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    amount: "0.05",
-    token: "USDC",
-    timestamp: Date.now() - 1000 * 60 * 14,
-    blockNumber: 1248902,
-    endpoint: "POST /api/gate/summarize",
-    status: "CONFIRMED",
-  },
-  {
-    id: "rcpt-002",
-    txHash: "0x98bce410e527d921bdfc09756bca95648f572c57801a61b8f5223e74a812e95a",
-    seller: DEFAULT_SELLER_ADDRESS,
-    payer: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-    amount: "0.05",
-    token: "USDC",
-    timestamp: Date.now() - 1000 * 60 * 6,
-    blockNumber: 1248918,
-    endpoint: "POST /api/gate/summarize",
-    status: "CONFIRMED",
-  },
-  {
-    id: "rcpt-003",
-    txHash: "0xfa4911d9bc422a5789f109eb923185bb81d09e530960d7c570b556942c74d301",
-    seller: DEFAULT_SELLER_ADDRESS,
-    payer: "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-    amount: "0.05",
-    token: "USDC",
-    timestamp: Date.now() - 1000 * 60 * 2,
-    blockNumber: 1248931,
-    endpoint: "POST /api/gate/summarize",
-    status: "CONFIRMED",
-  },
-];
+export function getArcProvider(): ethers.JsonRpcProvider {
+  const rpcUrl =
+    process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network";
+  return new ethers.JsonRpcProvider(rpcUrl);
+}
+
+export function getUsageVaultContract(
+  signerOrProvider?: ethers.Signer | ethers.Provider
+): ethers.Contract {
+  const vaultAddress =
+    process.env.NEXT_PUBLIC_USAGE_VAULT_ADDRESS || DEFAULT_USAGE_VAULT_ADDRESS;
+  const p = signerOrProvider || getArcProvider();
+  return new ethers.Contract(vaultAddress, USAGE_VAULT_ABI, p);
+}
+
+// In-memory confirmed session receipts
+let sessionReceipts: UsageReceipt[] = [];
 
 export function getReceipts(): UsageReceipt[] {
-  return [...receiptsStore].sort((a, b) => b.timestamp - a.timestamp);
+  return [...sessionReceipts].sort((a, b) => b.timestamp - a.timestamp);
 }
 
 export function addReceipt(receipt: UsageReceipt): void {
-  receiptsStore.unshift(receipt);
-  if (receiptsStore.length > 50) {
-    receiptsStore.pop();
+  sessionReceipts.unshift(receipt);
+  if (sessionReceipts.length > 50) {
+    sessionReceipts.pop();
   }
 }
 
-export function generateTxHash(): string {
-  return (
-    "0x" +
-    Array.from({ length: 64 }, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join("")
-  );
+/**
+ * Fetch real on-chain events directly from UsageVault contract on Arc Testnet
+ */
+export async function fetchOnChainEvents(
+  sellerAddress = DEFAULT_SELLER_ADDRESS
+): Promise<UsageReceipt[]> {
+  try {
+    const contract = getUsageVaultContract();
+    const filter = contract.filters.UsageRecorded(sellerAddress);
+    
+    // Query recent blocks on Arc
+    const provider = getArcProvider();
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 20000);
+
+    const logs = await contract.queryFilter(filter, fromBlock, "latest");
+    const onChainReceipts: UsageReceipt[] = [];
+
+    for (const log of logs) {
+      if ("args" in log) {
+        const [seller, payer, amount, timestamp, callTag] = log.args;
+        onChainReceipts.push({
+          id: `onchain-${log.transactionHash}-${log.index}`,
+          txHash: log.transactionHash,
+          seller,
+          payer,
+          amount: ethers.formatEther(amount),
+          token: "USDC",
+          timestamp: Number(timestamp) * 1000,
+          blockNumber: log.blockNumber,
+          endpoint: `POST /api/gate/${callTag || "summarize"}`,
+          status: "CONFIRMED",
+        });
+      }
+    }
+
+    return onChainReceipts;
+  } catch (err) {
+    console.warn("Could not query on-chain filter logs:", err);
+    return [];
+  }
+}
+
+/**
+ * Mathematically verify a transaction on Arc Testnet.
+ * Checks that the tx exists, was mined successfully, and interacted with UsageVault.
+ */
+export async function verifyTransactionOnArc(txHash: string): Promise<{
+  valid: boolean;
+  blockNumber?: number;
+  from?: string;
+  error?: string;
+}> {
+  try {
+    const provider = getArcProvider();
+    const receipt = await provider.getTransactionReceipt(txHash);
+
+    if (!receipt) {
+      return { valid: false, error: "Transaction not found on Arc Testnet." };
+    }
+
+    if (receipt.status !== 1) {
+      return { valid: false, error: "Transaction reverted on Arc Testnet." };
+    }
+
+    const expectedVault = (
+      process.env.NEXT_PUBLIC_USAGE_VAULT_ADDRESS || DEFAULT_USAGE_VAULT_ADDRESS
+    ).toLowerCase();
+
+    if (receipt.to && receipt.to.toLowerCase() !== expectedVault) {
+      return {
+        valid: false,
+        error: `Transaction destination (${receipt.to}) does not match UsageVault (${expectedVault}).`,
+      };
+    }
+
+    return {
+      valid: true,
+      blockNumber: receipt.blockNumber,
+      from: receipt.from,
+    };
+  } catch (err: any) {
+    return {
+      valid: false,
+      error: `Arc verification error: ${err.message || String(err)}`,
+    };
+  }
 }

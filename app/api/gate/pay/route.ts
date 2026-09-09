@@ -1,67 +1,96 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ethers } from "ethers";
 import {
   ARC_TESTNET_CONFIG,
   DEFAULT_SELLER_ADDRESS,
   DEFAULT_USAGE_VAULT_ADDRESS,
+  USAGE_VAULT_ABI,
   addReceipt,
-  generateTxHash,
+  getArcProvider,
 } from "@/lib/arc";
 
 /**
- * Settlement endpoint:
- * Allows a caller or automated agent to settle a 402 challenge via Arc Testnet.
- * Returns a valid transaction receipt and payment proof token.
+ * Real On-Chain Settlement Endpoint on Arc Testnet.
+ * Submits an actual transaction to UsageVault.recordPayment(...) using the funded relayer/payer key.
+ * ZERO mock data — executes live on Arc.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const {
       amount = "0.05",
-      payerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      sellerAddress = process.env.SELLER_ADDRESS || DEFAULT_SELLER_ADDRESS,
-      vaultAddress = process.env.USAGE_VAULT_ADDRESS || DEFAULT_USAGE_VAULT_ADDRESS,
       endpoint = "POST /api/gate/summarize",
+      sellerAddress = process.env.NEXT_PUBLIC_SELLER_ADDRESS || DEFAULT_SELLER_ADDRESS,
+      vaultAddress = process.env.NEXT_PUBLIC_USAGE_VAULT_ADDRESS || DEFAULT_USAGE_VAULT_ADDRESS,
     } = body;
 
-    const txHash = generateTxHash();
-    const blockNumber = Math.floor(1248900 + Math.random() * 500);
+    const privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) {
+      return NextResponse.json(
+        { error: "PRIVATE_KEY is not configured on server for Arc settlement." },
+        { status: 500 }
+      );
+    }
 
-    const receipt = {
-      id: "rcpt-" + Date.now().toString(36),
-      txHash,
+    const provider = getArcProvider();
+    const wallet = new ethers.Wallet(privateKey, provider);
+    const vaultContract = new ethers.Contract(vaultAddress, USAGE_VAULT_ABI, wallet);
+
+    const amountWei = ethers.parseEther(String(amount));
+
+    console.log(`[Arc Settlement] Broadcasting real tx from ${wallet.address} to ${vaultAddress} for ${amount} USDC...`);
+
+    // Call recordPayment on Arc Testnet with native USDC value
+    const tx = await vaultContract.recordPayment(
+      sellerAddress,
+      wallet.address,
+      amountWei,
+      "summarize/v1",
+      { value: amountWei }
+    );
+
+    console.log(`[Arc Settlement] Tx submitted: ${tx.hash}. Waiting for block confirmation...`);
+    const receipt = await tx.wait(1);
+
+    const onChainReceipt = {
+      id: `arc-${receipt.hash}`,
+      txHash: receipt.hash,
       seller: sellerAddress,
-      payer: payerAddress,
+      payer: wallet.address,
       amount: String(amount),
       token: "USDC",
       timestamp: Date.now(),
-      blockNumber,
+      blockNumber: receipt.blockNumber,
       endpoint,
       status: "CONFIRMED" as const,
     };
 
-    // Record receipt
-    addReceipt(receipt);
+    addReceipt(onChainReceipt);
 
     return NextResponse.json({
       success: true,
-      message: "Payment settled on Arc Testnet and recorded to UsageVault.",
+      message: "Payment confirmed on Arc Testnet.",
       receipt: {
-        txHash,
-        blockNumber,
-        payer: payerAddress,
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        payer: wallet.address,
         seller: sellerAddress,
         vault: vaultAddress,
         amount: `${amount} USDC`,
-        gasUsed: "21480",
+        gasUsed: receipt.gasUsed.toString(),
         network: ARC_TESTNET_CONFIG.chainName,
-        explorerUrl: `${ARC_TESTNET_CONFIG.blockExplorerUrls[0]}/tx/${txHash}`,
+        explorerUrl: `${ARC_TESTNET_CONFIG.blockExplorerUrls[0]}/tx/${receipt.hash}`,
       },
-      proofToken: txHash,
-      instructions: "Pass 'X-402-Payment-Proof: " + txHash + "' in headers to execute the gated API call.",
+      proofToken: receipt.hash,
+      instructions: `Pass 'X-402-Payment-Proof: ${receipt.hash}' in headers to execute the gated API call.`,
     });
   } catch (error: any) {
+    console.error("Arc on-chain settlement failed:", error);
     return NextResponse.json(
-      { error: "Payment Settlement Error", details: error?.message || String(error) },
+      {
+        error: "On-chain payment settlement failed on Arc Testnet.",
+        details: error?.message || String(error),
+      },
       { status: 500 }
     );
   }

@@ -101,9 +101,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to access **
 
 ## 5. Smart Contract: `UsageVault.sol`
 
-`UsageVault.sol` is deployed on Arc Testnet:
-- **Contract Address:** `0x8A791620dd6260079BF849Dc5567aDC3F2FdC318`
-- **Explorer:** [https://testnet.arcscan.app/address/0x8A791620dd6260079BF849Dc5567aDC3F2FdC318](https://testnet.arcscan.app)
+`UsageVault.sol` is deployed live on Arc Testnet:
+- **Contract Address:** `0x2fB757b6158320b239a6eC4f7d7A0149D858D890`
+- **Deployment Tx Hash:** `0x0868901a553005cda09e1a28b0e28c880eedf0ff7169e4699efacec40f02ae24`
+- **Explorer:** [https://testnet.arcscan.app/address/0x2fB757b6158320b239a6eC4f7d7A0149D858D890](https://testnet.arcscan.app/address/0x2fB757b6158320b239a6eC4f7d7A0149D858D890)
 
 ### Core Interface
 ```solidity
