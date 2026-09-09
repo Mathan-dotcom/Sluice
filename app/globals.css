@@ -1,0 +1,342 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..400&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root, [data-theme="pulse"], [data-theme="meridian"] {
+  /* Surface Depths */
+  --ink: #0c0c0e;                 /* Page background — deep charcoal, not pure black */
+  --neu-base: #1c1c1f;            /* Base material color for all panels */
+  --neu-base-raised: #202023;     /* Slightly lighter base for floating/top-layer panels */
+
+  /* Shadow Pair (defines the "single overhead light" illusion) */
+  --neu-shadow-dark: rgba(0, 0, 0, 0.65);
+  --neu-shadow-light: rgba(255, 255, 255, 0.045);
+  --neu-shadow-dark-soft: rgba(0, 0, 0, 0.4);
+  --neu-shadow-light-soft: rgba(255, 255, 255, 0.03);
+
+  /* Semantic State Colors */
+  --recovered: #ffffff;
+  --recovered-soft: rgba(255, 255, 255, 0.09);
+  --recovered-glow: rgba(255, 255, 255, 0.35);
+
+  --at-risk: #e4e4e7;
+  --at-risk-soft: rgba(255, 255, 255, 0.05);
+  --at-risk-glow: rgba(255, 255, 255, 0.2);
+
+  --critical: #a1a1aa;
+  --critical-soft: rgba(255, 255, 255, 0.06);
+  --critical-glow: rgba(255, 255, 255, 0.3);
+
+  --signal: #ffffff;
+  --signal-soft: rgba(255, 255, 255, 0.08);
+  --signal-glow: rgba(255, 255, 255, 0.45);
+
+  /* Financial Ledgers */
+  --ledger: #ffffff;
+  --ledger-muted: #a1a1aa;
+  --zinc-muted: #71717a;
+
+  /* Radius — generous, consistent rounding */
+  --radius-pulse: 20px;
+  --radius-pulse-sm: 14px;
+
+  /* Typography */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--ink);
+  color: var(--signal);
+  font-family: var(--font-ui);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Typography Scale & Utility Classes --- */
+
+.text-display-xl {
+  font-family: var(--font-display);
+  font-size: 3.75rem;
+  line-height: 1.0;
+  font-weight: 340;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 768px) {
+  .text-display-xl {
+    font-size: 4.5rem;
+  }
+}
+
+.text-display-md {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  line-height: 1.05;
+  font-weight: 380;
+  letter-spacing: -0.01em;
+}
+
+.text-heading {
+  font-family: var(--font-ui);
+  font-size: 1.25rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.text-body {
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #d4d4d8;
+}
+
+.text-data {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.text-micro {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Universal Text Alignment Standard */
+p, .text-justify, .card-description {
+  text-align: justify;
+  text-justify: inter-word;
+  text-align-last: left;
+}
+
+/* --- Neumorphic Elevation & Surface Architecture --- */
+
+.neu-panel {
+  background: var(--neu-base);
+  border-radius: var(--radius-pulse);
+  border: none;
+  box-shadow:
+    8px 8px 20px var(--neu-shadow-dark),
+    -6px -6px 16px var(--neu-shadow-light);
+}
+
+.neu-panel-raised {
+  background: var(--neu-base-raised);
+  border-radius: var(--radius-pulse);
+  border: none;
+  box-shadow:
+    14px 14px 32px var(--neu-shadow-dark),
+    -10px -10px 26px var(--neu-shadow-light);
+}
+
+.neu-pill {
+  background: var(--neu-base);
+  border-radius: 999px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  box-shadow:
+    inset 3px 3px 6px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--at-risk);
+}
+
+.neu-well {
+  background: var(--neu-base);
+  border-radius: var(--radius-pulse-sm);
+  border: none;
+  padding: 1rem;
+  box-shadow:
+    inset 4px 4px 10px var(--neu-shadow-dark-soft),
+    inset -3px -3px 8px var(--neu-shadow-light-soft);
+}
+
+/* --- Interaction & Motion System --- */
+
+.card-hover {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+  position: relative;
+}
+
+.card-hover:hover {
+  transform: translateY(-6px) translateZ(0);
+  box-shadow:
+    14px 14px 30px var(--neu-shadow-dark),
+    -10px -10px 24px var(--neu-shadow-light);
+  z-index: 10;
+}
+
+.card-hover:active {
+  transform: translateY(0) translateZ(0);
+  box-shadow:
+    inset 6px 6px 14px var(--neu-shadow-dark),
+    inset -4px -4px 10px var(--neu-shadow-light);
+}
+
+/* Button Hierarchy */
+
+.neu-button {
+  background: var(--neu-base);
+  border: none;
+  border-radius: var(--radius-pulse-sm);
+  box-shadow:
+    6px 6px 14px var(--neu-shadow-dark),
+    -4px -4px 10px var(--neu-shadow-light);
+  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.65rem 1.25rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.neu-button:hover:not(:disabled) {
+  box-shadow:
+    8px 8px 18px var(--neu-shadow-dark),
+    -6px -6px 14px var(--neu-shadow-light);
+  transform: translateY(-1px);
+}
+
+.neu-button:active:not(:disabled) {
+  box-shadow:
+    inset 4px 4px 10px var(--neu-shadow-dark),
+    inset -3px -3px 8px var(--neu-shadow-light);
+  transform: translateY(0);
+}
+
+.neu-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.neu-button-primary {
+  background: var(--neu-base-raised);
+  border: none;
+  border-radius: var(--radius-pulse-sm);
+  box-shadow:
+    8px 8px 20px var(--neu-shadow-dark),
+    -6px -6px 16px var(--neu-shadow-light),
+    0 0 24px 0 var(--signal-glow);
+  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.neu-button-primary:hover:not(:disabled) {
+  box-shadow:
+    10px 10px 24px var(--neu-shadow-dark),
+    -8px -8px 20px var(--neu-shadow-light),
+    0 0 36px 0 var(--signal-glow);
+  transform: translateY(-1px);
+}
+
+.neu-button-primary:active:not(:disabled) {
+  box-shadow:
+    inset 5px 5px 12px var(--neu-shadow-dark),
+    inset -4px -4px 10px var(--neu-shadow-light);
+  transform: translateY(0);
+}
+
+.neu-button-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow:
+    6px 6px 14px var(--neu-shadow-dark),
+    -4px -4px 10px var(--neu-shadow-light);
+}
+
+/* Keyframe Animations */
+@keyframes recoveryExhale {
+  0% {
+    box-shadow: 8px 8px 20px var(--neu-shadow-dark), -6px -6px 16px var(--neu-shadow-light), 0 0 0px rgba(255, 255, 255, 0);
+  }
+  50% {
+    box-shadow: 8px 8px 20px var(--neu-shadow-dark), -6px -6px 16px var(--neu-shadow-light), 0 0 40px rgba(255, 255, 255, 0.5);
+  }
+  100% {
+    box-shadow: 8px 8px 20px var(--neu-shadow-dark), -6px -6px 16px var(--neu-shadow-light), 0 0 20px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes rollbackFlinch {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+@keyframes pulseBeacon {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.animate-exhale {
+  animation: recoveryExhale 1.2s ease-out;
+}
+
+.animate-flinch {
+  animation: rollbackFlinch 0.4s ease-in-out;
+}
+
+.beacon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  animation: pulseBeacon 2.4s infinite ease-in-out;
+}
+
+/* Scrollbar styling for monochrome neumorphic dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--neu-base-raised);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2e2e33;
+}
