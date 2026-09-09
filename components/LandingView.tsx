@@ -12,8 +12,12 @@ import {
   Lock,
   Layers,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { ARC_TESTNET_CONFIG, DEFAULT_USAGE_VAULT_ADDRESS } from "@/lib/arc";
+import SluiceGateVisualizer from "./SluiceGateVisualizer";
+import ConfidenceGauge from "./ConfidenceGauge";
+import ArcOscilloscope from "./ArcOscilloscope";
 
 interface LandingViewProps {
   onEnterSandbox: () => void;
@@ -37,9 +41,9 @@ export default function LandingView({
           flexDirection: "column",
           alignItems: "center",
           textAlign: "center",
-          paddingTop: "2rem",
+          paddingTop: "1.5rem",
           paddingBottom: "1.5rem",
-          maxWidth: "960px",
+          maxWidth: "980px",
           margin: "0 auto",
         }}
       >
@@ -83,7 +87,7 @@ export default function LandingView({
             fontSize: "1.15rem",
             lineHeight: 1.65,
             color: "#a1a1aa",
-            maxWidth: "760px",
+            maxWidth: "780px",
             marginBottom: "2.25rem",
           }}
         >
@@ -129,7 +133,7 @@ export default function LandingView({
             gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
             gap: "1.25rem",
             width: "100%",
-            maxWidth: "860px",
+            maxWidth: "920px",
             padding: "1.25rem 1.75rem",
             textAlign: "left",
           }}
@@ -170,6 +174,23 @@ export default function LandingView({
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Centerpiece WOW Feature: The Interactive Sluice Gate Visualizer */}
+      <section>
+        <SluiceGateVisualizer />
+      </section>
+
+      {/* 2 Signature Visual Telemetry Gauges (Confidence Gauge & Arc Oscilloscope) */}
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: "1.5rem",
+        }}
+      >
+        <ConfidenceGauge score={0.96} statusText="AUTONOMOUS CLEARING TIER" />
+        <ArcOscilloscope />
       </section>
 
       {/* The Sluice 3-Step Lifecycle Pipeline */}
