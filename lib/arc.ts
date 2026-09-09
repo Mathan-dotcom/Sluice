@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 
 export const ARC_TESTNET_CONFIG = {
   chainId: 5042002,
-  chainIdHex: "0x4cefb2",
+  chainIdHex: "0x4cef52",
   chainName: "Arc Testnet",
   rpcUrls: [
     process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network",
