@@ -101,8 +101,7 @@ export default function Home() {
       const res = await connectBrowserWallet();
       setWallet({ address: res.address, balance: res.balance });
     } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Wallet connection failed.");
+      console.warn("Wallet connect notice:", err?.message || err);
     } finally {
       setIsConnectingWallet(false);
     }

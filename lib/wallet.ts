@@ -21,7 +21,7 @@ export async function requestArcNetworkSwitch(): Promise<boolean> {
   }
 
   try {
-    // Attempt to switch to Arc Testnet
+    // Attempt to switch to Arc Testnet (0x4cef52 = 5042002)
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: ARC_TESTNET_CONFIG.chainIdHex }],
@@ -29,7 +29,10 @@ export async function requestArcNetworkSwitch(): Promise<boolean> {
     return true;
   } catch (switchError: any) {
     // Code 4902 means the chain has not been added to MetaMask yet
-    if (switchError.code === 4902 || switchError?.data?.originalError?.code === 4902) {
+    if (
+      switchError.code === 4902 ||
+      switchError?.data?.originalError?.code === 4902
+    ) {
       try {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
@@ -45,10 +48,12 @@ export async function requestArcNetworkSwitch(): Promise<boolean> {
         });
         return true;
       } catch (addError: any) {
-        throw new Error(`Failed to add Arc Testnet: ${addError.message}`);
+        console.warn("Could not auto-add Arc Testnet:", addError);
+        return false;
       }
     }
-    throw switchError;
+    console.warn("Chain switch error:", switchError);
+    return false;
   }
 }
 
@@ -72,7 +77,7 @@ export async function connectBrowserWallet(): Promise<{
 
   const userAddress = accounts[0];
 
-  // Ensure network is Arc Testnet
+  // Check current network
   const currentChainHex = await window.ethereum.request({
     method: "eth_chainId",
   });
@@ -83,13 +88,18 @@ export async function connectBrowserWallet(): Promise<{
   }
 
   // Fetch native balance on Arc
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const balanceWei = await provider.getBalance(userAddress);
-  const balance = ethers.formatEther(balanceWei);
+  let balance = "0.0000";
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const balanceWei = await provider.getBalance(userAddress);
+    balance = parseFloat(ethers.formatEther(balanceWei)).toFixed(4);
+  } catch (balErr) {
+    console.warn("Could not fetch wallet balance:", balErr);
+  }
 
   return {
     address: userAddress,
-    balance: parseFloat(balance).toFixed(4),
-    chainId: ARC_TESTNET_CONFIG.chainId,
+    balance,
+    chainId: currentChainId,
   };
 }
