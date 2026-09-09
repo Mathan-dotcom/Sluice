@@ -14,7 +14,9 @@ import {
   Wallet,
   Home as HomeIcon,
 } from "lucide-react";
-import SluiceFlow from "@/components/SluiceFlow";
+import LiveWallpaperEngine, { WallpaperMode } from "@/components/LiveWallpaperEngine";
+import LiveNetworkTicker from "@/components/LiveNetworkTicker";
+import LiveAgentStream from "@/components/LiveAgentStream";
 import LandingView from "@/components/LandingView";
 import SellerDashboard from "@/components/SellerDashboard";
 import ApiPlayground from "@/components/ApiPlayground";
@@ -29,6 +31,7 @@ import {
 import { connectBrowserWallet } from "@/lib/wallet";
 
 export default function Home() {
+  const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>("hydro");
   const [stats, setStats] = useState<{
     balance: string;
     currency: string;
@@ -129,8 +132,8 @@ export default function Home() {
         paddingBottom: "4rem",
       }}
     >
-      {/* Hydrodynamic Sluice Stream Flow Wallpaper */}
-      <SluiceFlow />
+      {/* Dynamic Multi-Mode Live Wallpaper Engine */}
+      <LiveWallpaperEngine mode={wallpaperMode} />
 
       {/* Interactive Ambient Radial Spotlight */}
       <div
@@ -150,9 +153,12 @@ export default function Home() {
           zIndex: 1,
           maxWidth: "1280px",
           margin: "0 auto",
-          padding: "1.5rem 1.5rem",
+          padding: "1.25rem 1.5rem 2rem",
         }}
       >
+        {/* Real-time Network Ticker */}
+        <LiveNetworkTicker totalCalls={stats.totalCalls} totalVolume={stats.totalVolume} />
+
         {/* Topbar / Navigation */}
         <header
           className="neu-panel"
@@ -223,8 +229,59 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Action Navigation & Wallet Button */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {/* Live Wallpaper Mode Switcher & Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            {/* Live Wallpaper Switcher */}
+            <div
+              className="neu-well"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.2rem 0.35rem",
+                gap: "0.25rem",
+                borderRadius: "10px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.68rem",
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--zinc-muted)",
+                  paddingLeft: "0.35rem",
+                  paddingRight: "0.15rem",
+                }}
+              >
+                BG:
+              </span>
+              <button
+                id="btn-wp-hydro"
+                onClick={() => setWallpaperMode("hydro")}
+                className={wallpaperMode === "hydro" ? "neu-button-primary" : "neu-button"}
+                style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem", height: "auto" }}
+                title="Hydrodynamic Sluice Streamlines"
+              >
+                🌊 Hydro
+              </button>
+              <button
+                id="btn-wp-quantum"
+                onClick={() => setWallpaperMode("quantum")}
+                className={wallpaperMode === "quantum" ? "neu-button-primary" : "neu-button"}
+                style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem", height: "auto" }}
+                title="3D Cybernetic Mesh Grid"
+              >
+                ⚡ Quantum
+              </button>
+              <button
+                id="btn-wp-celestial"
+                onClick={() => setWallpaperMode("celestial")}
+                className={wallpaperMode === "celestial" ? "neu-button-primary" : "neu-button"}
+                style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem", height: "auto" }}
+                title="Celestial Constellation & Gravitational Orbit"
+              >
+                🌌 Celestial
+              </button>
+            </div>
+
             <button
               id="btn-architecture"
               onClick={() => setIsArchModalOpen(true)}
@@ -458,6 +515,9 @@ export default function Home() {
         isOpen={isArchModalOpen}
         onClose={() => setIsArchModalOpen(false)}
       />
+
+      {/* Floating Autonomous Agent Activity Stream */}
+      <LiveAgentStream />
     </main>
   );
 }
