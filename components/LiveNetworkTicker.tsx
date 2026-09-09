@@ -10,12 +10,14 @@ interface LiveNetworkTickerProps {
 }
 
 export default function LiveNetworkTicker({ totalCalls, totalVolume }: LiveNetworkTickerProps) {
+  const [mounted, setMounted] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(61245980);
   const [latency, setLatency] = useState<number>(41);
   const [lastTick, setLastTick] = useState<string>("just now");
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
 
   useEffect(() => {
+    setMounted(true);
     // Measure actual latency and increment block height periodically
     const interval = setInterval(async () => {
       const start = performance.now();
@@ -37,6 +39,10 @@ export default function LiveNetworkTicker({ totalCalls, totalVolume }: LiveNetwo
 
     return () => clearInterval(interval);
   }, []);
+
+  const formatDeterministicNumber = (num: number): string => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
 
   return (
     <div
@@ -78,20 +84,24 @@ export default function LiveNetworkTicker({ totalCalls, totalVolume }: LiveNetwo
           <Radio size={12} color="var(--zinc-muted)" />
           <span>BLOCK:</span>
           <span
+            suppressHydrationWarning
             style={{
               color: isFlashing ? "#ffffff" : "#d4d4d8",
               fontWeight: 600,
               transition: "color 0.3s ease",
             }}
           >
-            #{blockHeight.toLocaleString()}
+            #{formatDeterministicNumber(blockHeight)}
           </span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
           <Zap size={12} color="#ffffff" />
           <span>RPC RTT:</span>
-          <span style={{ color: latency < 60 ? "#ffffff" : "#d4d4d8", fontWeight: 600 }}>
+          <span
+            suppressHydrationWarning
+            style={{ color: latency < 60 ? "#ffffff" : "#d4d4d8", fontWeight: 600 }}
+          >
             {latency}ms
           </span>
         </div>
