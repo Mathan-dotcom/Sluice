@@ -367,3 +367,21 @@ p, .text-justify, .card-description {
   transition: opacity 0.3s ease;
 }
 
+@keyframes floatSlow {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(30px, 20px) scale(1.06);
+  }
+  100% {
+    transform: translate(-20px, -15px) scale(0.97);
+  }
+}
+
+.live-badge-glow {
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+  animation: pulseBeacon 2s infinite ease-in-out;
+}
+
+
