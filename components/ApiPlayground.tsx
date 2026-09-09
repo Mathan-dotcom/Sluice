@@ -14,6 +14,9 @@ import {
   Wallet,
   Check,
   AlertCircle,
+  Copy,
+  Sparkles,
+  Terminal as TerminalIcon,
 } from "lucide-react";
 import { ethers } from "ethers";
 import { ARC_TESTNET_CONFIG, USAGE_VAULT_ABI } from "@/lib/arc";
@@ -25,14 +28,27 @@ interface ApiPlaygroundProps {
   onWalletConnect?: (address: string, balance: string) => void;
 }
 
-const SAMPLE_TEXT = `Autonomous AI agents require machine-speed economic rails to purchase inference, compute, and specialized data feeds without human credit cards or monthly subscription agreements. Sluice bridges autonomous LLM workers and API publishers through native USDC settlement on the Arc Layer 1 network. By issuing standard HTTP 402 Payment Required challenges and settling directly into a multi-tenant UsageVault smart contract, every API call becomes provable, auditable, and self-clearing within sub-second finality.`;
+const PRESET_PAYLOADS = [
+  {
+    label: "Autonomous Inference",
+    text: `Autonomous AI agents require machine-speed economic rails to purchase inference, compute, and specialized data feeds without human credit cards or monthly subscription agreements. Sluice bridges autonomous LLM workers and API publishers through native USDC settlement on the Arc Layer 1 network. By issuing standard HTTP 402 Payment Required challenges and settling directly into a multi-tenant UsageVault smart contract, every API call becomes provable, auditable, and self-clearing within sub-second finality.`,
+  },
+  {
+    label: "DeFi Risk Synthesis",
+    text: `Decentralized lending vaults often face cascading liquidations when oracle latency deviates during extreme market volatility. By implementing automated hedging pipelines governed by multi-agent consensus, automated keepers can execute rebalancing calls in sub-second intervals. Sluice enables these autonomous keepers to pay gas and service fees instantaneously in USDC on Arc without maintaining manual Stripe credits.`,
+  },
+  {
+    label: "Smart Contract Audit",
+    text: `The UsageVault contract adheres strictly to the Checks-Effects-Interactions pattern. When sellers execute withdraw(), the contract first checks available balance against the customized payout threshold, zeroes out the internal balance record, emits an immutable on-chain Withdrawn event, and only then forwards native USDC to the seller's address, mitigating all known reentrancy vectors.`,
+  },
+];
 
 export default function ApiPlayground({
   onPaymentSettled,
   connectedWalletAddress,
   onWalletConnect,
 }: ApiPlaygroundProps) {
-  const [inputText, setInputText] = useState(SAMPLE_TEXT);
+  const [inputText, setInputText] = useState(PRESET_PAYLOADS[0].text);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [responseStatus, setResponseStatus] = useState<number | null>(null);
@@ -40,6 +56,7 @@ export default function ApiPlayground({
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"result" | "headers" | "curl">("result");
+  const [isCopied, setIsCopied] = useState(false);
 
   // Local wallet state
   const [wallet, setWallet] = useState<{
@@ -98,7 +115,7 @@ export default function ApiPlayground({
     }
   };
 
-  // Step 2: Settle payment on Arc Testnet (either via MetaMask if connected, or via server relayer)
+  // Step 2: Settle payment on Arc Testnet (MetaMask if connected or server relayer)
   const handleSettlePayment = async () => {
     setIsLoading(true);
 
@@ -204,6 +221,14 @@ export default function ApiPlayground({
     }
   };
 
+  const handleCopyResult = () => {
+    if (aiResult?.data?.summary) {
+      navigator.clipboard.writeText(aiResult.data.summary);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
   const curlExample = `curl -X POST https://sluice.network/api/gate/summarize \\
   -H "Content-Type: application/json" \\
   ${paymentProof ? `-H "X-402-Payment-Proof: ${paymentProof}" \\\n  ` : ""}-d '{"text": "${inputText.replace(/\n/g, " ").slice(0, 80)}..."}'`;
@@ -212,7 +237,7 @@ export default function ApiPlayground({
     <div
       className="neu-panel"
       style={{
-        padding: "2rem",
+        padding: "2.25rem",
         position: "relative",
       }}
     >
@@ -224,9 +249,9 @@ export default function ApiPlayground({
           alignItems: "center",
           flexWrap: "wrap",
           gap: "1rem",
-          marginBottom: "1.5rem",
+          marginBottom: "1.75rem",
           paddingBottom: "1.25rem",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
         }}
       >
         <div>
@@ -239,8 +264,8 @@ export default function ApiPlayground({
               POST /api/gate/summarize
             </span>
           </div>
-          <h2 className="text-heading" style={{ color: "#ffffff" }}>
-            Interactive x402 Payment & Execution Demo
+          <h2 className="text-heading" style={{ color: "#ffffff", fontSize: "1.35rem" }}>
+            Interactive x402 Payment &amp; Execution Console
           </h2>
         </div>
 
@@ -273,7 +298,7 @@ export default function ApiPlayground({
                   border: "none",
                   color: "var(--zinc-muted)",
                   cursor: "pointer",
-                  fontSize: "0.7rem",
+                  fontSize: "0.75rem",
                   marginLeft: "0.4rem",
                 }}
                 title="Disconnect wallet"
@@ -287,7 +312,7 @@ export default function ApiPlayground({
               onClick={handleConnectWallet}
               disabled={isConnectingWallet}
               className="neu-button-primary"
-              style={{ padding: "0.55rem 1.1rem", fontSize: "0.82rem" }}
+              style={{ padding: "0.55rem 1.25rem", fontSize: "0.85rem" }}
             >
               <Wallet size={15} />
               <span>{isConnectingWallet ? "Connecting..." : "Connect Web3 Wallet"}</span>
@@ -315,12 +340,48 @@ export default function ApiPlayground({
         </div>
       )}
 
-      {/* Step Indicator Pills */}
+      {/* Preset Payload Selector Pills */}
+      <div style={{ marginBottom: "1.25rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            marginBottom: "0.6rem",
+            fontSize: "0.78rem",
+            color: "var(--zinc-muted)",
+          }}
+        >
+          <Sparkles size={13} color="#ffffff" />
+          <span>Select an AI Agent Prompt Preset:</span>
+        </div>
+
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {PRESET_PAYLOADS.map((p, idx) => (
+            <button
+              key={idx}
+              onClick={() => setInputText(p.text)}
+              className="neu-button"
+              style={{
+                padding: "0.35rem 0.75rem",
+                fontSize: "0.75rem",
+                background: inputText === p.text ? "var(--neu-base-raised)" : "var(--neu-base)",
+                boxShadow: inputText === p.text ? "inset 2px 2px 6px rgba(0,0,0,0.6)" : undefined,
+                color: inputText === p.text ? "#ffffff" : "var(--zinc-muted)",
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Step Indicator Connector */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "0.5rem",
+          gap: "0.6rem",
           marginBottom: "1.5rem",
           flexWrap: "wrap",
         }}
@@ -329,30 +390,30 @@ export default function ApiPlayground({
           className="neu-pill"
           style={{
             color: activeStep >= 1 ? "#ffffff" : "var(--zinc-muted)",
-            boxShadow: activeStep === 1 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
+            boxShadow: activeStep === 1 ? "0 0 14px rgba(255,255,255,0.25)" : undefined,
           }}
         >
           <span>1. Call (Unpaid)</span>
         </div>
-        <ArrowRight size={12} color="var(--zinc-muted)" />
+        <ArrowRight size={13} color="var(--zinc-muted)" />
         <div
           className="neu-pill"
           style={{
             color: activeStep >= 2 ? "#ffffff" : "var(--zinc-muted)",
-            boxShadow: activeStep === 2 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
+            boxShadow: activeStep === 2 ? "0 0 14px rgba(255,255,255,0.25)" : undefined,
           }}
         >
           <span>2. 402 Settlement</span>
         </div>
-        <ArrowRight size={12} color="var(--zinc-muted)" />
+        <ArrowRight size={13} color="var(--zinc-muted)" />
         <div
           className="neu-pill"
           style={{
             color: activeStep >= 3 ? "#ffffff" : "var(--zinc-muted)",
-            boxShadow: activeStep === 3 ? "0 0 12px rgba(255,255,255,0.2)" : undefined,
+            boxShadow: activeStep === 3 ? "0 0 14px rgba(255,255,255,0.25)" : undefined,
           }}
         >
-          <span>3. AI Unlock</span>
+          <span>3. Real AI Unlock</span>
         </div>
       </div>
 
@@ -368,17 +429,13 @@ export default function ApiPlayground({
             color: "var(--zinc-muted)",
           }}
         >
-          <span>Input Text Payload (Sent by Caller / AI Agent):</span>
-          <button
-            onClick={() => setInputText(SAMPLE_TEXT)}
-            className="neu-button"
-            style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}
-          >
-            Reset Sample
-          </button>
+          <span>Inbound Payload (Dispatched by Autonomous Agent):</span>
+          <span className="text-micro" style={{ color: "var(--zinc-muted)" }}>
+            {inputText.split(/\s+/).filter(Boolean).length} Words
+          </span>
         </div>
 
-        <div className="neu-well" style={{ padding: "0.5rem" }}>
+        <div className="neu-well" style={{ padding: "0.75rem" }}>
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
@@ -390,8 +447,8 @@ export default function ApiPlayground({
               outline: "none",
               color: "#ffffff",
               fontFamily: "var(--font-ui)",
-              fontSize: "0.88rem",
-              lineHeight: 1.5,
+              fontSize: "0.92rem",
+              lineHeight: 1.55,
               resize: "vertical",
             }}
             placeholder="Type text for the gated AI to analyze..."
@@ -413,10 +470,10 @@ export default function ApiPlayground({
           onClick={handleCallUnpaid}
           disabled={isLoading}
           className="neu-button"
-          style={{ padding: "0.75rem 1.25rem" }}
+          style={{ padding: "0.8rem 1.4rem", fontSize: "0.88rem" }}
         >
           <Play size={16} />
-          <span>Call API (Unpaid $\to$ 402 Challenge)</span>
+          <span>1. Call API (Unpaid $\to$ 402 Challenge)</span>
         </button>
 
         {challengeData && (
@@ -424,13 +481,13 @@ export default function ApiPlayground({
             onClick={handleSettlePayment}
             disabled={isLoading}
             className="neu-button-primary"
-            style={{ padding: "0.75rem 1.5rem" }}
+            style={{ padding: "0.8rem 1.6rem", fontSize: "0.9rem" }}
           >
             <Coins size={16} />
             <span>
               {wallet.address
-                ? `Pay 0.05 USDC with MetaMask (${wallet.address.slice(0, 6)}...)`
-                : "Settle 0.05 USDC on Arc & Unlock"}
+                ? `2. Pay 0.05 USDC with MetaMask (${wallet.address.slice(0, 6)}...)`
+                : "2. Settle 0.05 USDC on Arc & Unlock"}
             </span>
           </button>
         )}
@@ -439,12 +496,16 @@ export default function ApiPlayground({
           <div
             className="neu-pill"
             style={{
-              padding: "0.45rem 1rem",
+              padding: "0.5rem 1.1rem",
               background:
                 responseStatus === 200
                   ? "rgba(255, 255, 255, 0.08)"
                   : "rgba(161, 161, 170, 0.12)",
               color: "#ffffff",
+              boxShadow:
+                responseStatus === 200
+                  ? "0 0 16px rgba(255, 255, 255, 0.3)"
+                  : undefined,
             }}
           >
             <span
@@ -459,19 +520,19 @@ export default function ApiPlayground({
               {responseStatus === 402
                 ? "Payment Required"
                 : responseStatus === 200
-                ? "Payment Verified & Executed"
+                ? "Cryptographically Verified & Unlocked"
                 : "Response"}
             </span>
           </div>
         )}
       </div>
 
-      {/* Output Console */}
+      {/* Output Terminal Console */}
       {(challengeData || aiResult) && (
         <div
           className="neu-well"
           style={{
-            padding: "1.25rem",
+            padding: "1.5rem",
             position: "relative",
           }}
         >
@@ -479,48 +540,62 @@ export default function ApiPlayground({
           <div
             style={{
               display: "flex",
-              gap: "0.5rem",
-              marginBottom: "1rem",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1.25rem",
               borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
               paddingBottom: "0.75rem",
             }}
           >
-            <button
-              onClick={() => setActiveTab("result")}
-              className="neu-button"
-              style={{
-                padding: "0.3rem 0.75rem",
-                fontSize: "0.75rem",
-                background:
-                  activeTab === "result" ? "var(--neu-base-raised)" : "transparent",
-              }}
-            >
-              Response Payload
-            </button>
-            <button
-              onClick={() => setActiveTab("headers")}
-              className="neu-button"
-              style={{
-                padding: "0.3rem 0.75rem",
-                fontSize: "0.75rem",
-                background:
-                  activeTab === "headers" ? "var(--neu-base-raised)" : "transparent",
-              }}
-            >
-              x402 Protocol Headers
-            </button>
-            <button
-              onClick={() => setActiveTab("curl")}
-              className="neu-button"
-              style={{
-                padding: "0.3rem 0.75rem",
-                fontSize: "0.75rem",
-                background:
-                  activeTab === "curl" ? "var(--neu-base-raised)" : "transparent",
-              }}
-            >
-              cURL CLI
-            </button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => setActiveTab("result")}
+                className="neu-button"
+                style={{
+                  padding: "0.35rem 0.85rem",
+                  fontSize: "0.75rem",
+                  background:
+                    activeTab === "result" ? "var(--neu-base-raised)" : "transparent",
+                }}
+              >
+                Inference Result
+              </button>
+              <button
+                onClick={() => setActiveTab("headers")}
+                className="neu-button"
+                style={{
+                  padding: "0.35rem 0.85rem",
+                  fontSize: "0.75rem",
+                  background:
+                    activeTab === "headers" ? "var(--neu-base-raised)" : "transparent",
+                }}
+              >
+                x402 Headers
+              </button>
+              <button
+                onClick={() => setActiveTab("curl")}
+                className="neu-button"
+                style={{
+                  padding: "0.35rem 0.85rem",
+                  fontSize: "0.75rem",
+                  background:
+                    activeTab === "curl" ? "var(--neu-base-raised)" : "transparent",
+                }}
+              >
+                cURL CLI
+              </button>
+            </div>
+
+            {aiResult && (
+              <button
+                onClick={handleCopyResult}
+                className="neu-button"
+                style={{ padding: "0.3rem 0.7rem", fontSize: "0.72rem" }}
+              >
+                {isCopied ? <Check size={12} color="#ffffff" /> : <Copy size={12} />}
+                <span>{isCopied ? "Copied!" : "Copy Summary"}</span>
+              </button>
+            )}
           </div>
 
           {/* Tab 1: Result */}
@@ -534,20 +609,20 @@ export default function ApiPlayground({
                       alignItems: "center",
                       gap: "0.5rem",
                       color: "#e4e4e7",
-                      marginBottom: "0.75rem",
-                      fontSize: "0.9rem",
+                      marginBottom: "0.85rem",
+                      fontSize: "0.92rem",
                     }}
                   >
-                    <AlertTriangle size={16} />
-                    <strong>Gateway Challenge: Payment of 0.05 USDC Required</strong>
+                    <AlertTriangle size={17} color="#ffffff" />
+                    <strong>Gateway Challenge: 0.05 USDC Payment Required on Arc</strong>
                   </div>
                   <pre
                     style={{
                       fontFamily: "var(--font-mono)",
-                      fontSize: "0.78rem",
+                      fontSize: "0.8rem",
                       color: "#d4d4d8",
                       overflowX: "auto",
-                      lineHeight: 1.4,
+                      lineHeight: 1.45,
                     }}
                   >
                     {JSON.stringify(challengeData, null, 2)}
@@ -562,7 +637,7 @@ export default function ApiPlayground({
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: "1rem",
+                      marginBottom: "1.25rem",
                       flexWrap: "wrap",
                       gap: "0.5rem",
                     }}
@@ -575,8 +650,10 @@ export default function ApiPlayground({
                         color: "#ffffff",
                       }}
                     >
-                      <CheckCircle2 size={18} />
-                      <strong>Unlocked AI Analysis Output</strong>
+                      <CheckCircle2 size={19} color="#ffffff" />
+                      <strong style={{ fontSize: "1.05rem" }}>
+                        Unlocked Neural AI Inference Output
+                      </strong>
                     </div>
 
                     <a
@@ -594,26 +671,27 @@ export default function ApiPlayground({
                   {/* Summary Box */}
                   <div
                     style={{
-                      padding: "1rem",
+                      padding: "1.25rem",
                       borderRadius: "var(--radius-pulse-sm)",
-                      background: "rgba(255, 255, 255, 0.02)",
-                      marginBottom: "1rem",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      marginBottom: "1.25rem",
+                      boxShadow: "inset 2px 2px 6px rgba(0,0,0,0.5)",
                     }}
                   >
-                    <div className="text-micro" style={{ color: "var(--zinc-muted)", marginBottom: "0.4rem" }}>
-                      Executive Neural Summary
+                    <div className="text-micro" style={{ color: "var(--zinc-muted)", marginBottom: "0.5rem" }}>
+                      Executive Summary (via Gemini 3.6 Flash)
                     </div>
-                    <p className="card-description text-body" style={{ color: "#ffffff", fontSize: "0.95rem" }}>
+                    <p className="card-description text-body" style={{ color: "#ffffff", fontSize: "1.02rem", lineHeight: 1.6 }}>
                       {aiResult.data?.summary}
                     </p>
                   </div>
 
                   {/* Insights Bullet Points */}
-                  <div style={{ marginBottom: "1rem" }}>
-                    <div className="text-micro" style={{ color: "var(--zinc-muted)", marginBottom: "0.5rem" }}>
+                  <div style={{ marginBottom: "1.25rem" }}>
+                    <div className="text-micro" style={{ color: "var(--zinc-muted)", marginBottom: "0.6rem" }}>
                       Key Semantic Insights
                     </div>
-                    <ul style={{ paddingLeft: "1.25rem", color: "#d4d4d8", fontSize: "0.85rem", lineHeight: 1.6 }}>
+                    <ul style={{ paddingLeft: "1.25rem", color: "#d4d4d8", fontSize: "0.88rem", lineHeight: 1.65 }}>
                       {aiResult.data?.insights?.map((ins: string, i: number) => (
                         <li key={i}>{ins}</li>
                       ))}
@@ -626,7 +704,7 @@ export default function ApiPlayground({
                       display: "flex",
                       flexWrap: "wrap",
                       gap: "0.75rem",
-                      fontSize: "0.75rem",
+                      fontSize: "0.78rem",
                       fontFamily: "var(--font-mono)",
                     }}
                   >
@@ -656,7 +734,7 @@ export default function ApiPlayground({
             <pre
               style={{
                 fontFamily: "var(--font-mono)",
-                fontSize: "0.78rem",
+                fontSize: "0.8rem",
                 color: "#d4d4d8",
                 overflowX: "auto",
                 lineHeight: 1.5,
@@ -681,10 +759,10 @@ ${paymentProof ? `X-Usage-Receipt-Tx: ${paymentProof}\nX-Settlement-Status: CONF
               <pre
                 style={{
                   fontFamily: "var(--font-mono)",
-                  fontSize: "0.78rem",
+                  fontSize: "0.8rem",
                   color: "#d4d4d8",
                   overflowX: "auto",
-                  padding: "0.5rem",
+                  padding: "0.75rem",
                   background: "var(--ink)",
                   borderRadius: "8px",
                   lineHeight: 1.4,
