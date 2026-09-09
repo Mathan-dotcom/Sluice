@@ -62,7 +62,7 @@ Today, APIs and AI microservices force customers into monthly subscriptions or h
 - **Smart Contracts:** Solidity `0.8.20`, Hardhat & Foundry compatible
 - **Gas & Currency:** Native USDC on Arc
 - **Backend Gateway:** Node.js, Next.js 14 App Router, x402 protocol specification
-- **Frontend Mission Control:** React, Next.js, HTML5 2D Canvas `PulseField`
+- **Frontend Mission Control:** React, Next.js, HTML5 2D Canvas `SluiceFlow` (hydrodynamic payment streamlines)
 - **Styling:** Meridian Neumorphic Design System (Monochrome Dark Neumorphism, dual-shadow tactile surfaces, tri-font typography)
 
 ---
@@ -176,7 +176,7 @@ Sluice implements the **Meridian Design System v2.0** (`STYLEGUIDE-Neumorphism.m
   - `Fraunces` (Editorial Serif Display) for hero treasury counters
   - `Space Grotesk` (Technical UI) for navigation and controls
   - `IBM Plex Mono` (Financial Monospace) for the immutable ledger
-- **Kinetic Feedback:** 60fps HTML5 Canvas `PulseField`, tactile `.card-hover` elevation, and breathing recovery exhales.
+- **Kinetic Feedback:** 60fps HTML5 Canvas `SluiceFlow` stream field, tactile `.card-hover` elevation, and breathing recovery exhales.
 
 ---
 

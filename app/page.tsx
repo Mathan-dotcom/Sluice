@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import PulseField from "@/components/PulseField";
+import SluiceFlow from "@/components/SluiceFlow";
 import SellerDashboard from "@/components/SellerDashboard";
 import ApiPlayground from "@/components/ApiPlayground";
 import AuditTrail from "@/components/AuditTrail";
@@ -92,8 +92,8 @@ export default function Home() {
         paddingBottom: "4rem",
       }}
     >
-      {/* 60fps HTML5 Canvas Particle Field */}
-      <PulseField />
+      {/* Hydrodynamic Sluice Stream Flow Wallpaper */}
+      <SluiceFlow />
 
       {/* Main Container */}
       <div
