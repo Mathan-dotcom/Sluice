@@ -59,10 +59,11 @@ Today, APIs and AI microservices force customers into monthly subscriptions or h
 ## 3. Tech Stack
 
 - **Blockchain:** Arc Testnet (Chain ID `5042002`), Arc Mainnet ready (Chain ID `5042001`)
-- **Smart Contracts:** Solidity `0.8.20`, Hardhat & Foundry compatible
+- **Smart Contracts:** Solidity `0.8.20`, Hardhat & Foundry compatible (`UsageVault.sol`)
 - **Gas & Currency:** Native USDC on Arc
 - **Backend Gateway:** Node.js, Next.js 14 App Router, x402 protocol specification
-- **Frontend Mission Control:** React, Next.js, HTML5 2D Canvas `SluiceFlow` (hydrodynamic payment streamlines)
+- **AI Microservice:** Real Google Gemini 3.6 Flash inference engine
+- **Frontend Mission Control:** React, Next.js, HTML5 2D Canvas `LiveWallpaperEngine` (3 kinetic modes: Hydro streamlines, Quantum 3D mesh, Celestial orbits), Real-time `LiveNetworkTicker`, and Floating `LiveAgentStream`
 - **Styling:** Meridian Neumorphic Design System (Monochrome Dark Neumorphism, dual-shadow tactile surfaces, tri-font typography)
 
 ---
@@ -95,16 +96,17 @@ npx hardhat test
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser to access **Meridian Mission Control** and the **Interactive 402 Playground**.
+Open [http://localhost:3000](http://localhost:3000) in your browser to access **Meridian Mission Control**, the **Interactive 402 Sandbox**, and the **Live Visualizer**.
 
 ---
 
 ## 5. Smart Contract: `UsageVault.sol`
 
 `UsageVault.sol` is deployed live on Arc Testnet:
-- **Contract Address:** `0x2fB757b6158320b239a6eC4f7d7A0149D858D890`
-- **Deployment Tx Hash:** `0x0868901a553005cda09e1a28b0e28c880eedf0ff7169e4699efacec40f02ae24`
-- **Explorer:** [https://testnet.arcscan.app/address/0x2fB757b6158320b239a6eC4f7d7A0149D858D890](https://testnet.arcscan.app/address/0x2fB757b6158320b239a6eC4f7d7A0149D858D890)
+- **Contract Address:** [`0x2fB757b6158320b239a6eC4f7d7A0149D858D890`](https://testnet.arcscan.app/address/0x2fB757b6158320b239a6eC4f7d7A0149D858D890)
+- **Deployment Tx Hash:** [`0x0868901a553005cda09e1a28b0e28c880eedf0ff7169e4699efacec40f02ae24`](https://testnet.arcscan.app/tx/0x0868901a553005cda09e1a28b0e28c880eedf0ff7169e4699efacec40f02ae24)
+- **Verified Settlement Tx:** [`0x49dc0b541552d96e01a1783204fa120610f5ac3755850ceaaed3eb02c6cb6c55`](https://testnet.arcscan.app/tx/0x49dc0b541552d96e01a1783204fa120610f5ac3755850ceaaed3eb02c6cb6c55)
+- **Seller Address:** `0xa9c97E3D0f95be9Fc990B3686997eC346D96833e`
 
 ### Core Interface
 ```solidity
@@ -142,7 +144,7 @@ When a caller requests `/api/gate/summarize` without payment headers:
 ```http
 HTTP/1.1 402 Payment Required
 Content-Type: application/json
-WWW-Authenticate: x402 realm="Sluice", chainId="5042002", price="0.05", token="USDC", vault="0x8A791620..."
+WWW-Authenticate: x402 realm="Sluice", chainId="5042002", price="0.05", token="USDC", vault="0x2fB757b6158320b239a6eC4f7d7A0149D858D890"
 
 {
   "error": "Payment Required",
@@ -151,8 +153,8 @@ WWW-Authenticate: x402 realm="Sluice", chainId="5042002", price="0.05", token="U
   "pricing": { "amount": "0.05", "currency": "USDC" },
   "network": { "name": "Arc Testnet", "chainId": 5042002 },
   "destination": {
-    "seller": "0x429994c9efE1D137c4856E3d5dF981fae62F764F",
-    "usageVault": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
+    "seller": "0xa9c97E3D0f95be9Fc990B3686997eC346D96833e",
+    "usageVault": "0x2fB757b6158320b239a6eC4f7d7A0149D858D890"
   }
 }
 ```
@@ -162,7 +164,7 @@ Pass the settlement transaction hash in the `X-402-Payment-Proof` header:
 ```bash
 curl -X POST https://sluice.network/api/gate/summarize \
   -H "Content-Type: application/json" \
-  -H "X-402-Payment-Proof: 0x3f8a92bb710ef50d89265f61765c71a3e5cbb5920d0f507b5380d6b63c224f8d" \
+  -H "X-402-Payment-Proof: 0x49dc0b541552d96e01a1783204fa120610f5ac3755850ceaaed3eb02c6cb6c55" \
   -d '{"text": "Autonomous AI agents require machine-speed economic rails..."}'
 ```
 
