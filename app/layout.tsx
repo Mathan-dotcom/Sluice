@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: "Sluice — Pay-Per-Call API Monetization on Arc | Meridian Mission Control",
   description:
     "Autonomous pay-per-call API gateway monetizing machine-to-machine AI services in USDC on Arc Testnet & Mainnet with on-chain UsageVault proof.",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
   keywords: [
     "Arc",
     "USDC",
@@ -32,6 +40,9 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="meridian">
       <head>
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>

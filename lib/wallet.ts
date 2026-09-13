@@ -57,7 +57,7 @@ export async function requestArcNetworkSwitch(): Promise<boolean> {
   }
 }
 
-export async function connectBrowserWallet(): Promise<{
+export async function connectBrowserWallet(forceFreshPrompt: boolean = true): Promise<{
   address: string;
   balance: string;
   chainId: number;
@@ -66,7 +66,29 @@ export async function connectBrowserWallet(): Promise<{
     throw new Error("No Web3 wallet found. Please install MetaMask or Rabby.");
   }
 
-  // Request account access
+  // 1. Clear any cached local/session storage items
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("sluice_connected_wallet");
+    localStorage.removeItem("walletconnect");
+    sessionStorage.clear();
+  }
+
+  // 2. Force the wallet to pop up the account selection prompt by requesting permissions
+  if (forceFreshPrompt) {
+    try {
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch (permErr: any) {
+      if (permErr?.code === 4001) {
+        throw new Error("Connection request cancelled by user.");
+      }
+      console.warn("wallet_requestPermissions fallback notice:", permErr?.message || permErr);
+    }
+  }
+
+  // 3. Request account access
   const accounts: string[] = await window.ethereum.request({
     method: "eth_requestAccounts",
   });

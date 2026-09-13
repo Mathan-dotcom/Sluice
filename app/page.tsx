@@ -100,8 +100,9 @@ export default function Home() {
 
   const handleGlobalWalletConnect = async () => {
     setIsConnectingWallet(true);
+    setWallet({ address: null, balance: null });
     try {
-      const res = await connectBrowserWallet();
+      const res = await connectBrowserWallet(true);
       setWallet({ address: res.address, balance: res.balance });
     } catch (err: any) {
       console.warn("Wallet connect notice:", err?.message || err);
@@ -179,11 +180,22 @@ export default function Home() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "0.5rem",
+                gap: "0.65rem",
                 cursor: "pointer",
               }}
             >
-              <span className="beacon-dot" />
+              <img
+                src="/icon.png"
+                alt="Sluice Logo"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  objectFit: "contain",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  padding: "2px",
+                }}
+              />
               <span
                 style={{
                   fontFamily: "var(--font-display)",
@@ -296,19 +308,48 @@ export default function Home() {
               <div
                 className="neu-pill"
                 style={{
-                  padding: "0.5rem 0.85rem",
+                  padding: "0.45rem 0.85rem",
                   background: "var(--neu-base-raised)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
                 }}
               >
-                <Wallet size={12} color="#ffffff" />
-                <span style={{ color: "#ffffff", fontWeight: 600 }}>
-                  {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
-                </span>
-                {wallet.balance && (
-                  <span style={{ color: "var(--zinc-muted)" }}>
-                    {wallet.balance} USDC
+                <div
+                  onClick={handleGlobalWalletConnect}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.45rem",
+                    cursor: "pointer",
+                  }}
+                  title="Click to switch account"
+                >
+                  <Wallet size={12} color="#ffffff" />
+                  <span style={{ color: "#ffffff", fontWeight: 600 }}>
+                    {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
                   </span>
-                )}
+                  {wallet.balance && (
+                    <span style={{ color: "var(--zinc-muted)" }}>
+                      {wallet.balance} USDC
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setWallet({ address: null, balance: null })}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--zinc-muted)",
+                    cursor: "pointer",
+                    fontSize: "0.75rem",
+                    padding: "0 2px",
+                    lineHeight: 1,
+                  }}
+                  title="Disconnect wallet"
+                >
+                  ✕
+                </button>
               </div>
             ) : (
               <button

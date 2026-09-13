@@ -33,7 +33,7 @@ sequenceDiagram
     actor Seller as Seller Mission Control
 
     Agent->>Gateway: POST /api/gate/summarize (No Auth)
-    Gateway-->>Agent: 402 Payment Required (Price: 0.05 USDC, Vault: 0x8A79..., Nonce)
+    Gateway-->>Agent: 402 Payment Required (Price: 0.05 USDC, Vault: 0x2fB7..., Nonce)
     
     Agent->>Vault: recordPayment{value: 0.05 ether}(seller, agent, "summarize/v1")
     Vault-->>Agent: Tx Hash Emitted (Event: UsageRecorded)

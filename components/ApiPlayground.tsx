@@ -72,8 +72,9 @@ export default function ApiPlayground({
   const handleConnectWallet = async () => {
     setIsConnectingWallet(true);
     setWalletError(null);
+    setWallet({ address: null, balance: null });
     try {
-      const res = await connectBrowserWallet();
+      const res = await connectBrowserWallet(true);
       setWallet({ address: res.address, balance: res.balance });
       if (onWalletConnect) {
         onWalletConnect(res.address, res.balance);
